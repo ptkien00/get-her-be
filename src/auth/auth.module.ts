@@ -6,6 +6,7 @@ import { AuthService } from '@/auth/auth.service';
 import { UsersModule } from '@/users/users.module';
 import { AdModule } from '@/ad/ad.module';
 import { FirebaseAuthStrategy } from '@/auth/passport/firebase-auth.strategy';
+import { AdminModule } from '@/admin/admin.module';
 
 @Module({
   controllers: [AuthController],
@@ -14,6 +15,7 @@ import { FirebaseAuthStrategy } from '@/auth/passport/firebase-auth.strategy';
     UsersModule,
     PassportModule,
     AdModule,
+    AdminModule,
   ],
 })
 export class AuthModule {}

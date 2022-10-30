@@ -10,12 +10,15 @@ import { I18nDefs } from '@/i18n/i18n.enum';
 import { UserEntity } from '@/users/entities/user.entity';
 import { SetRoleDto } from '@/auth/dto/set-role.dto';
 import { Role } from '@/auth/role.enum';
+import { AdminEntity } from '@/admin/admin.entity';
+import { AdminService } from '@/admin/admin.service';
 
 @Injectable({ scope: Scope.REQUEST })
 export class AuthService {
 
   constructor(
     private readonly usersService: UsersService,
+    private readonly adminService: AdminService,
     private readonly envService: EnvService,
     private readonly i18Service: I18nService
   ) {}
@@ -77,23 +80,40 @@ export class AuthService {
     };
   }
 
-  async login(firebaseUserDto: FirebaseUserDto): Promise<UserEntity> {
+  async login(firebaseUserDto: FirebaseUserDto): Promise<UserEntity | AdminEntity> {
 
-    const { idToken } = firebaseUserDto;
+    const { idToken, role: reqRole } = firebaseUserDto;
 
     const { uid, email, email_verified, role } = await auth().verifyIdToken(idToken);
 
-    if (!role || role !== Role.User) {
+    if (!role || role !== reqRole) {
 
       throw new UnauthorizedException(this.i18Service.t(I18nDefs.Unauthorized));
     }
 
-    let user = await this.usersService.findFirst({ firebaseUid: uid });
+    return role === Role.User ? this.loginAsUser({ firebaseUid: uid, email, email_verified }) : this.loginAsAdmin(uid);
+  }
 
-    user = await this.usersService.update(user.id, { email: email_verified ? email : undefined });
+  async loginAsUser({ firebaseUid, email, email_verified }: { firebaseUid: string, email: string, email_verified: boolean }): Promise<UserEntity> {
+
+    let user = await this.usersService.findFirst({ firebaseUid });
+
+    if (email_verified) {
+
+      user = await this.usersService.update(user.id, { email });
+    }
+
     user.role = Role.User;
 
     return user;
+  }
+
+  async loginAsAdmin(firebaseUid: string): Promise<AdminEntity> {
+
+    const admin = await this.adminService.findOne({ firebaseUid });
+    admin.role = Role.Admin;
+
+    return admin;
   }
 
   async logout(user: UserEntity): Promise<void> {
@@ -101,7 +121,7 @@ export class AuthService {
     await auth().revokeRefreshTokens(user.firebaseUid);
   }
 
-  async setCustomClaims(setRoleDto: SetRoleDto) {
+  async setCustomClaims(setRoleDto: SetRoleDto): Promise<void> {
 
     const { idToken, role } = setRoleDto;
     const { uid, role: existingRole } = await auth().verifyIdToken(idToken);

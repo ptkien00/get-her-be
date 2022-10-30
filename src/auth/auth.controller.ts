@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -11,6 +11,8 @@ import { SESSION_COOKIE } from '@/auth/constants';
 import { Roles } from '@/auth/decorators/roles.decorator';
 import { CurrentUser } from '@/users/decorators/current-user.decorator';
 import { Role } from '@/auth/role.enum';
+import { SetRoleDto } from '@/auth/dto/set-role.dto';
+import { AdminEntity } from '@/admin/admin.entity';
 
 @Controller('auth')
 export class AuthController {
@@ -43,7 +45,7 @@ export class AuthController {
 
   @Post('login')
   @SkipAuth()
-  async login(@Res({ passthrough: true }) res: Response, @Body('user') firebaseUserDto: FirebaseUserDto) {
+  async login(@Res({ passthrough: true }) res: Response, @Body('user') firebaseUserDto: FirebaseUserDto): Promise<UserEntity | AdminEntity> {
 
     const user = await this.authService.login(firebaseUserDto);
     const { sessionCookie, expiresIn } = await this.authService.createSessionCookie(firebaseUserDto.idToken);
@@ -60,9 +62,22 @@ export class AuthController {
 
   @Post('logout')
   @Roles(Role.Admin, Role.User)
-  async logout(@Res({ passthrough: true }) res: Response, @CurrentUser() user: UserEntity) {
+  async logout(@Res({ passthrough: true }) res: Response, @CurrentUser() user: UserEntity): Promise<void> {
 
     await this.authService.logout(user);
     res.clearCookie(SESSION_COOKIE);
+  }
+
+  @Post('role')
+  @SkipAuth()
+  setCustomClaims(@Body() setRoleDto: SetRoleDto): void {
+
+    this.authService.setCustomClaims(setRoleDto);
+  }
+
+  @Get('csrf-token')
+  @SkipAuth()
+  csrfToken(@Req() req: Request) {
+    return { csrfToken: req.csrfToken() };
   }
 }
