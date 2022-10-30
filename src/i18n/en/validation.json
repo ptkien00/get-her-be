@@ -1,0 +1,4 @@
+{
+  "unauthorized": "Invalid credentials",
+  "accountExists": "Account already exists"
+}

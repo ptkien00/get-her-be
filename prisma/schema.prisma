@@ -1,0 +1,125 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["interactiveTransactions"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id          String   @id @default(uuid())
+  deactivated Boolean  @default(false)
+  firebaseUid String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model User {
+  id                      String               @id @default(uuid())
+  deactivated             Boolean              @default(false)
+  familyName              String               @default("")
+  givenName               String               @default("")
+  familyNameFurigana      String               @default("")
+  givenNameFurigana       String               @default("")
+  birthday                String               @default("")
+  email                   String               @unique @default("")
+  gender                  Int                  @default(0)
+  registrationRoute       RegistrationRoute    @relation(fields: [registrationRouteId], references: [id])
+  registrationRouteId     Int                  @default(0)
+  registrationStep        RegistrationStep     @relation(fields: [registrationStepId], references: [id])
+  registrationStepId      Int                  @default(0)
+  registrationCompletedAt DateTime?
+  hiddenFlg               Boolean              @default(false) // 管理者が本番環境を見るためのフラグ。read 全般から隠す。
+  firebaseUid             String               @unique
+  adSource                AdSource             @relation(fields: [adSourceId], references: [id])
+  adSourceId              Int                  @default(0)
+  adCampaign              String               @default("")
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  userLoginLogs           UserLoginLog[]
+  career                  Career[]
+  academicBackground      AcademicBackground[]
+}
+
+// Possible values for clientType, clientName, osName, deviceType, and deviceBrand are described in the device-detector-js package.
+model UserLoginLog {
+  id          Int      @id @default(autoincrement())
+  loggedInOn  DateTime @db.Date
+  clientType  String   @default("") // browser など
+  clientName  String   @default("") // Chrome など
+  osName      String   @default("") // Mac など
+  deviceType  String   @default("") // desktop など
+  deviceBrand String   @default("") // Apple など
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, loggedInOn])
+}
+
+// Tables that should be added with Gether
+model Career {
+  id               Int      @id @default(autoincrement())
+  companyName      String
+  department       String
+  importantPostFlg Boolean
+  detail           String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id])
+  userId           String
+}
+
+// Tables that should be added with Gether
+model AcademicBackground {
+  id           Int         @id @default(autoincrement())
+  schoolName   String
+  department   String
+  graduatedAt  DateTime
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  user         User        @relation(fields: [userId], references: [id])
+  userId       String
+  schoolType   SchoolType? @relation(fields: [schoolTypeId], references: [id])
+  schoolTypeId Int?
+}
+
+// Seed data required
+model AdSource {
+  id        Int      @id @default(autoincrement())
+  type      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+}
+
+// Seed data required
+model RegistrationRoute {
+  id        Int      @id @default(autoincrement()) // seed データで指定
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+}
+
+// Seed data required
+model RegistrationStep {
+  id        Int      @id @default(autoincrement()) // seed データで指定
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+}
+
+// Tables that should be added with Gether
+// Seed data required
+model SchoolType {
+  id                 Int                  @id @default(autoincrement())
+  name               String
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  academicBackground AcademicBackground[]
+}

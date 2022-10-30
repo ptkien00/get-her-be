@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0.27
+    platform: linux/x86_64
+    container_name: gether_db
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      TZ: ${TZ}
+    healthcheck:
+      test: mysqladmin ping -h db -u${DB_USER} -p${DB_PASSWORD}
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    ports:
+      - "${DB_PORT}:3306"
+    volumes:
+      - db-store:/var/lib/mysql
+      - ./logs:/var/log/mysql
+      - ./docker/db/my.cnf:/etc/mysql/conf.d/my.cnf
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base
+    image: gether_back
+    container_name: gether_be
+    tty: true
+    environment:
+      BACKEND_PORT: ${BACKEND_PORT}
+      FRONTEND_PORT: ${FRONTEND_PORT}
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "${BACKEND_PORT}:3000"
+      - "${STUDIO_PORT}:5555"
+    volumes:
+      - .:/get-her:cached
+    command: tail -f /dev/null
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-store:
